@@ -1,0 +1,187 @@
+######Data Preparation#######
+
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+import matplotlib.pyplot as plt
+
+from google.colab import drive
+drive.mount("/content/drive")
+file_path = "/content/drive/MyDrive/UMPSA/COIL/sample_coil - Group 3.xlsx" #change file location
+df = pd.read_excel(file_path)
+
+from pandas.core.arrays.categorical import factorize_from_iterable
+#data preparation
+df['date'] = pd.to_datetime(df['date'])
+df.set_index('date', inplace=True)
+
+#calculate return target available
+df['USD/JPY_Returns'] = df['USD/JPY'].pct_change() * 100
+
+#calculate features returns and lag features (x)
+#use t-1 data to predict t return
+df['S&P 500_Returns'] = df['S&P 500'].pct_change() * 100
+df['Lag_SP500'] = df['S&P 500_Returns'].shift(1)
+df['Nikkei 225_Returns'] = df['Nikkei 225'].pct_change() * 100
+df['Lag_Nikkei'] = df['Nikkei 225_Returns'].shift(1)
+
+#use lag level for US EPU
+df['Lag_US_EPU'] = df['US EPU'].shift(1)
+
+#final features & target
+features = ['Lag_SP500', 'Lag_Nikkei', 'Lag_US_EPU']
+target = 'USD/JPY_Returns'
+
+df_final = df.dropna(subset=[target] + features)
+
+X = df_final[features]
+y = df_final[target]
+
+
+#######Time Series######
+
+split_index = int(0.8 * len(df_final))
+X_train, X_test = X[:split_index], X[split_index:]
+y_train, y_test = y[:split_index], y[split_index:]
+
+
+
+#########Train Random Forest Model##########
+
+rf_model = RandomForestRegressor(
+    n_estimators=200, #increase it for better performance
+    max_depth=5,
+    random_state=42,
+    n_jobs=-1
+)
+rf_model.fit(X_train, y_train)
+
+
+########Traditional features important plot#######
+
+fi = rf_model.feature_importances_
+sorted_idx = fi.argsort()/
+
+fig, ax = plt.subplots(figsize = (10, 6))
+ax.barh(np.array(features)[sorted_idx], fi[sorted_idx], color = 'teal')
+ax.set_title('Random Forest Feature Importance (Mean Decrease in Impurity)')
+ax.set_xlabel('Feature Importance Score')
+plt.tight_layout()
+plt.savefig('rf_feature_importance.png')
+plt.show()
+
+
+
+######Explainable AI (XAI) with SHAP######
+
+
+explainer = shap.TreeExplainer(rf_model)
+
+X_test_sample = X_test.sample(n = min(300, len(X_test)), random_state = 42)
+shap_values = explainer.shap_values(X_test_sample)
+
+#SHAP Summary Plot
+plt.figure(figsize = (10, 6))
+shap.summary_plot(shap_values, X_test_sample, plot_type = 'dot', show = False)
+plt.tight_layout()
+plt.savefig('shap_summary_plot.png')
+plt.show()
+
+#################
+
+import shap
+import matplotlib.pyplot as plt
+
+from google.colab import drive
+drive.mount("/content/drive")
+file_path = "/content/drive/MyDrive/UMPSA/COIL/sample_coil - Group 3.xlsx"
+df = pd.read_excel(file_path)
+
+df['date'] = pd.to_datetime(df['date'])
+df.set_index('date', inplace=True)
+df['USD/JPY_Returns'] = df['USD/JPY'].pct_change() * 100
+df['S&P 500_Returns'] = df['S&P 500'].pct_change() * 100
+df['Lag_SP500'] = df['S&P 500_Returns'].shift(1)
+df['Nikkei 225_Returns'] = df['Nikkei 225'].pct_change() * 100
+df['Lag_Nikkei'] = df['Nikkei 225_Returns'].shift(1)
+df['Lag_US_EPU'] = df['US EPU'].shift(1)
+
+features = ['Lag_SP500', 'Lag_Nikkei', 'Lag_US_EPU']
+target = 'USD/JPY_Returns'
+df_final = df.dropna(subset=[target] + features)
+
+X = df_final[features]
+y = df_final[target]
+
+split_index = int(0.8 * len(df))
+X_train, X_test = X[:split_index], X[split_index:]
+y_train, y_test = y[:split_index], y[split_index:]
+
+rf_model = RandomForestRegressor(
+    n_estimators=200,
+    max_depth=5,
+    random_state=42,
+    n_jobs=-1
+)
+rf_model.fit(X_train, y_train)
+
+
+########## Actual vs Predicted Plot #######
+
+from sklearn.ensemble import RandomForestRegressor
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from google.colab import drive
+drive.mount("/content/drive")
+file_path = "/content/drive/MyDrive/UMPSA/COIL/sample_coil - Group 3.xlsx"
+df = pd.read_excel(file_path)
+
+df['date'] = pd.to_datetime(df['date'])
+df.set_index('date', inplace=True)
+df['USD/JPY_Returns'] = df['USD/JPY'].pct_change() * 100
+df['S&P 500_Returns'] = df['S&P 500'].pct_change() * 100
+df['Lag_SP500'] = df['S&P 500_Returns'].shift(1)
+df['Nikkei 225_Returns'] = df['Nikkei 225'].pct_change() * 100
+df['Lag_Nikkei'] = df['Nikkei 225_Returns'].shift(1)
+df['Lag_US_EPU'] = df['US EPU'].shift(1)
+
+features = ['Lag_SP500', 'Lag_Nikkei', 'Lag_US_EPU']
+target = 'USD/JPY_Returns'
+df_final = df.dropna(subset=[target] + features)
+
+X = df_final[features]
+y = df_final[target]
+
+split_index = int(0.8 * len(df)) # The split_index was originally using len(df) instead of len(df_final). Changed to df_final.
+X_train, X_test = X[:split_index], X[split_index:]
+y_train, y_test = y[:split_index], y[split_index:]
+
+rf_model = RandomForestRegressor(
+    n_estimators=200,
+    max_depth=5,
+    random_state=42,
+    n_jobs=-1
+)
+rf_model.fit(X_train, y_train)
+
+y_pred = rf_model.predict(X_test)
+
+results_df = pd.DataFrame({
+    'Actual': y_test,
+    'Predicted': y_pred
+})
+results_df.index = X_test.index
+
+plt.figure(figsize = (14, 7))
+plt.plot(results_df.index, results_df['Actual'], label = 'Actual Returns', color = 'blue', alpha = 0.7)
+plt.plot(results_df.index, results_df['Predicted'], label = 'Predicted Returns', color = 'red', linestyle = '--')
+
+plt.title('Actual vs. Predicted Daily USD/JPY Returns (Test Set)')
+plt.xlabel('Date')
+plt.ylabel('Daily Return (%)')
+plt.legend()
+plt.grid(True, linestyle = ':', alpha = 0.6)
+plt.tight_layout()
+plt.savefig('actual_vs_predicted_returns.png')
+plt.show()
